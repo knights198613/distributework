@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <bean id="zKclientUtils" class="com.jiangwei.distributework.zookeeper.ZKclientUtils">
+        <constructor-arg name="hostList" value="${zkHost}" index="0"/>
+        <constructor-arg name="maxElapsedTimeMs" value="0" index="1"/>
+    </bean>
+</beans>
