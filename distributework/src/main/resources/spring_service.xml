@@ -6,5 +6,6 @@
     <bean id="zKclientUtils" class="com.jiangwei.distributework.zookeeper.ZKclientUtils">
         <constructor-arg name="hostList" value="${zkHost}" index="0"/>
         <constructor-arg name="maxElapsedTimeMs" value="0" index="1"/>
+        <constructor-arg name="sleepMsBetweenRetries" value="0" index="2"/>
     </bean>
 </beans>

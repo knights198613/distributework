@@ -4,6 +4,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.curator.framework.api.CuratorListener;
 import org.apache.curator.retry.RetryUntilElapsed;
 import org.apache.zookeeper.CreateMode;
 import org.slf4j.Logger;
@@ -25,18 +26,24 @@ public class ZKclientUtils {
     private String hostList;
     private int default_MaxElapsedTimeMs = 5000;
     private int default_SleepMsBetweenRetries = 500;
+    private int default_SessionTimeOutMs = 60 * 1000;
+    private int default_connectionTimeOutMs = 60 * 1000;
     private CuratorFramework curatorFramework;
 
     public ZKclientUtils(String hostList) {
         this.hostList = hostList;
-        this.curatorFramework = createClient(hostList, 0, 0);
+        this.curatorFramework = createClient(hostList, 0, 0,0, 0);
     }
 
     public ZKclientUtils( String hostList, int maxElapsedTimeMs, int sleepMsBetweenRetries) {
         this.maxElapsedTimeMs = maxElapsedTimeMs;
         this.sleepMsBetweenRetries = sleepMsBetweenRetries;
         this.hostList = hostList;
-        this.curatorFramework = createClient(hostList, maxElapsedTimeMs, sleepMsBetweenRetries);
+        this.curatorFramework = createClient(hostList,
+                default_SessionTimeOutMs,
+                default_connectionTimeOutMs,
+                maxElapsedTimeMs,
+                sleepMsBetweenRetries);
     }
 
     /**
@@ -44,11 +51,14 @@ public class ZKclientUtils {
      * @param hostList
      * @return
      */
-    private CuratorFramework createClient(String hostList, int maxElapsedTimeMs, int sleepMsBetweenRetries) {
+    private CuratorFramework createClient(String hostList, int sessionTimeOutMs, int connectionTimeOutMs,
+                                          int maxElapsedTimeMs, int sleepMsBetweenRetries) {
         CuratorFramework curatorFramework = null;
         if(StringUtils.isNotBlank(hostList)) {
             curatorFramework = CuratorFrameworkFactory
                     .newClient(hostList,
+                            sessionTimeOutMs == default_SessionTimeOutMs ? default_SessionTimeOutMs:sessionTimeOutMs,
+                            connectionTimeOutMs == default_connectionTimeOutMs ? default_connectionTimeOutMs:connectionTimeOutMs,
                             new RetryUntilElapsed(maxElapsedTimeMs == 0 ? default_MaxElapsedTimeMs:maxElapsedTimeMs,
                                     sleepMsBetweenRetries == 0 ? default_SleepMsBetweenRetries:sleepMsBetweenRetries));
         }
@@ -85,11 +95,56 @@ public class ZKclientUtils {
                         .forPath(path);
             }
         } catch (Exception e) {
-            LOGGER.error("创建znode节点失败.",  e);
+            LOGGER.error("创建znode节点失败. path={}, byte[]={}, createMode={}.", path, data, createMode, e);
         }
         return result;
     }
 
+    public void deletePath(String path) {
+        try {
+            curatorFramework.delete().forPath(path);
+        } catch (Exception e) {
+            LOGGER.error("删除znode节点失败. path={}", path, e);
+        }
+    }
+
+    /**
+     * 对执行节点创建监控点
+     * @param path
+     */
+    public void addWatcher(String path) {
+        try {
+            this.curatorFramework.getData().watched().forPath(path);
+        }catch (Exception e) {
+            LOGGER.error("创建监控点失败. path={}", path, e);
+        }
+    }
+
+    /**
+     * 添加事件监听器
+     * @param listener
+     */
+    public void addListenner(CuratorListener listener) {
+        curatorFramework.getCuratorListenable().addListener(listener);
+    }
+
+    /**
+     * 开启客户端
+     */
+    public void startClient() {
+        if(null != curatorFramework) {
+            curatorFramework.start();
+        }
+    }
+
+    /**
+     * 关闭客户端
+     */
+    public void closeClient() {
+        if(null != curatorFramework) {
+            curatorFramework.close();
+        }
+    }
 
     public int getMaxElapsedTimeMs() {
         return maxElapsedTimeMs;
